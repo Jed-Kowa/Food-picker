@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>今天吃什麼？</title>
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="美食隨機選">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            touch-action: manipulation;
+        }
+        .safe-area-inset {
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%);
+        }
+        .slot-machine {
+            height: 60px;
+            overflow: hidden;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        @keyframes scroll {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-80%); }
+        }
+        .slot-items {
+            animation: scroll 0.5s linear infinite;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+    <div class="safe-area-inset flex-grow flex flex-col items-center p-6">
+        
+        <!-- Header -->
+        <header class="w-full text-center mt-8 mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">今天吃什麼？</h1>
+            <p class="text-gray-500 mt-2">隨機為您決定下一餐</p>
+        </header>
+
+        <!-- Main Card -->
+        <div class="w-full max-w-sm bg-white rounded-3xl shadow-xl p-8 text-center flex flex-col items-center border border-gray-100">
+            <div id="status-icon" class="text-6xl mb-6">🎲</div>
+            
+            <div id="initial-state" class="w-full">
+                <p class="text-gray-600 mb-8 leading-relaxed">
+                    選擇困難症發作？<br>
+                    按下按鈕，我們將隨機挑選一個<br>
+                    附近的熱門餐廳類別。
+                </p>
+            </div>
+
+            <!-- Slot Machine Animation -->
+            <div id="loading-state" class="hidden w-full mb-8">
+                <div class="slot-machine mb-4">
+                    <div class="slot-items flex flex-col text-2xl font-bold text-red-500">
+                        <div class="h-[60px] flex items-center justify-center">拉麵</div>
+                        <div class="h-[60px] flex items-center justify-center">火鍋</div>
+                        <div class="h-[60px] flex items-center justify-center">義大利麵</div>
+                        <div class="h-[60px] flex items-center justify-center">壽司</div>
+                        <div class="h-[60px] flex items-center justify-center">漢堡</div>
+                        <div class="h-[60px] flex items-center justify-center">燒肉</div>
+                        <div class="h-[60px] flex items-center justify-center">早午餐</div>
+                    </div>
+                </div>
+                <p id="loading-msg" class="text-gray-500">正在獲取您的位置...</p>
+            </div>
+
+            <!-- Main Action Button -->
+            <button id="spin-button" onclick="randomPickAndLocate()" class="w-full py-5 gradient-bg text-white text-xl font-bold rounded-2xl shadow-2xl transition transform active:scale-95 hover:brightness-110">
+                🎰 幫我選一個！
+            </button>
+        </div>
+
+        <!-- Environment Hint (顯示給在檔案預覽中開啟的使用者) -->
+        <div id="env-hint" class="mt-6 p-4 bg-yellow-50 rounded-xl border border-yellow-200 text-xs text-yellow-700 hidden">
+            ⚠️ 偵測到您可能不在 Safari 中。請點擊下方的「分享」按鈕，選擇「在 Safari 中開啟」以使用定位功能。
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-auto pt-10 text-center text-xs text-gray-400">
+            <p id="location-status">準備就緒</p>
+            <p class="mt-1">抓取 1 公里內隨機類別</p>
+        </footer>
+    </div>
+
+    <script>
+        // 檢查是否在 Safari/正規瀏覽器環境中
+        window.onload = function() {
+            if (window.location.protocol === 'file:') {
+                document.getElementById('env-hint').classList.remove('hidden');
+            }
+        };
+
+        const foodCategories = ["拉麵", "火鍋", "義大利麵", "壽司", "漢堡", "燒肉", "早午餐", "泰式料理", "牛肉麵", "咖啡廳", "居酒屋", "甜點"];
+
+        function randomPickAndLocate() {
+            const btn = document.getElementById('spin-button');
+            const loading = document.getElementById('loading-state');
+            const initial = document.getElementById('initial-state');
+            const statusText = document.getElementById('location-status');
+
+            btn.disabled = true;
+            btn.innerText = "命運挑選中...";
+            loading.classList.remove('hidden');
+            initial.classList.add('hidden');
+            statusText.innerText = "正在定位您的座標...";
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        const randomCategory = foodCategories[Math.floor(Math.random() * foodCategories.length)];
+                        
+                        document.getElementById('loading-msg').innerText = `選中了：${randomCategory}！`;
+                        statusText.innerText = "定位成功，準備跳轉地圖";
+
+                        const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(randomCategory)}/@${lat},${lng},15z/data=!3m1!4b1`;
+                        
+                        setTimeout(() => {
+                            window.location.href = searchUrl;
+                        }, 1500);
+                    },
+                    (error) => {
+                        console.error(error);
+                        alert("定位失敗！\n1. 請確認是否使用 Safari 開啟\n2. 請檢查是否已開啟定位權限");
+                        resetUI();
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                alert("瀏覽器不支援定位。");
+                resetUI();
+            }
+        }
+
+        function resetUI() {
+            const btn = document.getElementById('spin-button');
+            const loading = document.getElementById('loading-state');
+            const initial = document.getElementById('initial-state');
+            btn.disabled = false;
+            btn.innerText = "🎰 幫我選一個！";
+            loading.classList.add('hidden');
+            initial.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
